@@ -16,6 +16,9 @@ public class OpenSearchTTLService {
     @Value("${opensearch.url}")
     private String openSearchUrl;
 
+    @Value("${opensearch.ttl}")
+    private String ttlDuration;
+
     public OpenSearchTTLService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
@@ -86,7 +89,7 @@ public class OpenSearchTTLService {
             String jsonBody = """
             {
               "policy": {
-                "description": "TTL Demo Policy - delete after 2 minutes",
+                "description": "TTL Demo Policy - delete after %s",
                 "default_state": "hot",
                 "states": [
                   {
@@ -95,7 +98,7 @@ public class OpenSearchTTLService {
                     "transitions": [
                       {
                         "state_name": "delete",
-                        "conditions": { "min_index_age": "2m" }
+                        "conditions": { "min_index_age": "%s" }
                       }
                     ]
                   },
@@ -110,7 +113,7 @@ public class OpenSearchTTLService {
                 ]
               }
             }
-            """;
+            """.formatted(ttlDuration, ttlDuration);
 
             HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
             restTemplate.exchange(policyUrl, HttpMethod.PUT, entity, String.class);
@@ -129,4 +132,27 @@ public class OpenSearchTTLService {
         log.info("ISM Explain {}", response.getBody());
         return response;
     }
+
+    public ResponseEntity<String> getIndexData(String indexName) {
+        String url = openSearchUrl + "/" + indexName + "/_search?pretty";
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        log.info("Data from index {} -> {}", indexName, response.getBody());
+        return response;
+    }
+
+    public ResponseEntity<String> searchByField(String indexName, String field, String value) {
+        String url = openSearchUrl + "/" + indexName + "/_search";
+        String query = """
+    {
+      "query": { "match": { "%s": "%s" } }
+    }
+    """.formatted(field, value);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> entity = new HttpEntity<>(query, headers);
+
+        return restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+    }
+
 }

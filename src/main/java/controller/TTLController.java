@@ -24,4 +24,20 @@ public class TTLController {
     public ResponseEntity<String> explainPolicy(@PathVariable String indexName) {
         return ttlService.explainPolicy(indexName);
     }
+
+
+    /**
+     * Fetch all data from a given index
+     */
+    @GetMapping("/data/{indexName}")
+    public ResponseEntity<String> getIndexData(
+            @PathVariable String indexName,
+            @RequestParam(required = false) String field,
+            @RequestParam(required = false) String value) {
+
+        if (field != null && value != null) {
+            return ttlService.searchByField(indexName, field, value);
+        }
+        return ttlService.getIndexData(indexName);
+    }
 }
